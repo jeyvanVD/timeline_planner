@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategic Roadmap Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans p-4 md:p-8 text-sm">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-200 pb-6">
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 tracking-tight">Roadmap Capacity Planner</h1>
+                <p class="text-slate-500 font-medium text-sm text-balance">Strategic Resource Allocation & Dual-Pool Capacity Optimization</p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Year</label>
+                    <select id="config-year" class="p-2 border rounded-lg bg-white font-bold text-xs shadow-sm" onchange="autoSetHolidays(); updateDashboard();">
+                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Quarter</label>
+                    <select id="config-quarter" class="p-2 border rounded-lg bg-white font-bold text-xs shadow-sm" onchange="autoSetHolidays(); updateDashboard();">
+                        <option value="1">Q1</option><option value="2" selected>Q2</option><option value="3">Q3</option><option value="4">Q4</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Holidays</label>
+                    <input type="number" id="config-holidays" value="8" class="p-2 border rounded-lg bg-white font-bold w-14 text-xs shadow-sm" onchange="updateDashboard()">
+                </div>
+                <div class="flex flex-col justify-end">
+                    <span id="label-net-days" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap">Billing Days: 57</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+            <!-- Sidebar Controls -->
+            <aside class="space-y-6">
+                <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Resource Pool</h2>
+                    <div class="space-y-4 text-sm font-semibold text-slate-700">
+                        <div class="flex items-center justify-between text-slate-600"><span>BE Count</span><input type="number" id="be-headcount" value="8" class="w-16 px-2 py-1 border rounded-lg text-right font-bold" onchange="syncLimits(); updateDashboard();"></div>
+                        <div class="flex items-center justify-between text-slate-600"><span>FE Count</span><input type="number" id="fe-headcount" value="4" class="w-16 px-2 py-1 border rounded-lg text-right font-bold" onchange="syncLimits(); updateDashboard();"></div>
+                        <div class="flex items-center justify-between text-slate-600"><span>QA Count</span><input type="number" id="qa-headcount" value="4" class="w-16 px-2 py-1 border rounded-lg text-right font-bold" onchange="syncLimits(); updateDashboard();"></div>
+                        <hr class="border-slate-100">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Split (Prod / Eng)</label>
+                        <select id="split-ratio" class="w-full px-3 py-2 border rounded-lg font-bold bg-slate-50 text-sm shadow-inner" onchange="updateDashboard()">
+                            <option value="1.0">100 / 0</option><option value="0.9">90 / 10</option><option value="0.8" selected>80 / 20</option><option value="0.7">70 / 30</option><option value="0.6">60 / 40</option><option value="0.5">50 / 50</option>
+                        </select>
+                    </div>
+                </section>
+
+                <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Initiative HC Limits</h2>
+                    <div class="space-y-3 text-xs font-medium text-slate-600">
+                        <div class="flex items-center justify-between"><span>Max BE / Proj</span><input type="number" id="limit-be" value="2" class="w-12 px-2 py-1 border rounded text-right font-semibold" onchange="syncLimits(); updateDashboard()"></div>
+                        <div class="flex items-center justify-between"><span>Max FE / Proj</span><input type="number" id="limit-fe" value="2" class="w-12 px-2 py-1 border rounded text-right font-semibold" onchange="syncLimits(); updateDashboard()"></div>
+                        <div class="flex items-center justify-between"><span>Max QA / Proj</span><input type="number" id="limit-qa" value="2" class="w-12 px-2 py-1 border rounded text-right font-semibold" onchange="syncLimits(); updateDashboard()"></div>
+                    </div>
+                </section>
+
+                <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4 text-center">
+                        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Stack Backlog</h2>
+                        <div class="flex gap-2">
+                            <button onclick="openBulkModal()" class="text-slate-400 hover:text-slate-800 text-[10px] font-black uppercase transition">Bulk</button>
+                            <button onclick="openModal()" class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase transition">+ Add</button>
+                        </div>
+                    </div>
+                    <div id="initiative-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
+                </section>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="lg:col-span-3 space-y-8">
+                <!-- Utilization Breakdown -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden text-sm">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100 font-bold text-xs text-slate-500 uppercase tracking-widest text-center">Resource Utilization Summary</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-tighter text-center">
+                                    <th class="p-4 text-left">Function</th><th class="p-4">Total Available</th><th class="p-4">Product Pool</th><th class="p-4">Engineering Pool</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allocation-breakdown" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Roadmap Visualization -->
+                <div id="timeline-sections" class="space-y-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="p-3 bg-blue-50/50 border-b font-black text-[10px] text-blue-800 uppercase tracking-widest flex justify-between items-center">
+                            <span class="flex-1 text-center">Product Section</span>
+                            <div class="flex gap-4 text-[9px] font-bold text-slate-400 uppercase">
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-green-400 rounded-full"></span> BE</span>
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-yellow-400 rounded-full"></span> FE</span>
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-blue-400 rounded-full"></span> QA</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <div class="gantt-grid min-w-[950px]">
+                                <div class="gantt-cell font-bold bg-slate-50 border-r flex items-center text-slate-500 uppercase text-[9px]">Initiative & Scope</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 1</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 2</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 3</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 4</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 5</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 6</div>
+                                <div id="product-rows" style="display: contents;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden text-center">
+                        <div class="p-3 bg-purple-50/50 border-b font-black text-[10px] text-purple-800 uppercase tracking-widest text-center">Engineering Section</div>
+                        <div class="overflow-x-auto">
+                            <div class="gantt-grid min-w-[950px]">
+                                <div class="gantt-cell font-bold bg-slate-50 border-r flex items-center text-slate-500 uppercase text-[9px]">Initiative & Scope</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 1</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 2</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 3</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 4</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 5</div>
+                                <div class="gantt-cell font-bold bg-slate-50 text-center border-r text-slate-500 uppercase text-[9px]">Sprint 6</div>
+                                <div id="engineering-rows" style="display: contents;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategic Insights -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-100">
+                    <!-- Demand-based HC -->
+                    <div class="bg-slate-800 rounded-3xl p-6 shadow-xl border border-slate-700 flex flex-col">
+                        <h3 class="text-xs font-black uppercase text-slate-400 mb-4 tracking-[0.2em]">Required HC for 100% Backlog</h3>
+                        <div id="recommended-hc" class="space-y-4 flex-1"></div>
+                        <p class="text-[8px] text-slate-500 mt-4 leading-relaxed font-medium uppercase tracking-tight text-center">* Demand calculation includes 0.4MW FE Integration Buffer.</p>
+                    </div>
+                    <!-- Guaranteed Delivery -->
+                    <div class="bg-blue-600 rounded-3xl p-6 shadow-xl border border-blue-500 flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-black uppercase text-blue-100 tracking-[0.2em]">Guaranteed Delivery</h3>
+                            <button onclick="applyRecommendedCombo()" class="text-[9px] bg-white text-blue-600 px-3 py-1 rounded-full font-black uppercase hover:bg-blue-50 transition shadow-sm">Preview Full Quarter</button>
+                        </div>
+                        <div id="recommended-combo" class="text-sm space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1"></div>
+                        <p id="reset-tip" class="text-[9px] text-blue-200 mt-4 opacity-70 italic hidden text-center">* Backlog filtered to 100% delivered items. Use Bulk Editor to restore original.</p>
+                    </div>
+                </div>
+
+                <!-- Status Summary -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pb-12">
+                    <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center">
+                        <h3 class="text-[9px] font-black text-green-600 uppercase mb-3">Finished ✅</h3>
+                        <ul id="list-completed" class="text-[11px] space-y-1 font-bold text-slate-800"></ul>
+                    </div>
+                    <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center">
+                        <h3 class="text-[9px] font-black text-blue-600 uppercase mb-3">Dev Done ⚙️</h3>
+                        <ul id="list-dev-done" class="text-[11px] space-y-1 font-bold text-slate-800"></ul>
+                    </div>
+                    <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-center">
+                        <h3 class="text-[9px] font-black text-amber-500 uppercase mb-3 text-center">Carried Over ⏩</h3>
+                        <ul id="list-carried" class="text-[11px] space-y-1 font-bold text-slate-800"></ul>
+                    </div>
+                    <div class="bg-white border border-red-50 rounded-2xl p-4 shadow-sm text-center">
+                        <h3 class="text-[9px] font-black text-red-500 uppercase mb-3">Unable to Pick 🚫</h3>
+                        <ul id="list-unable" class="text-[11px] space-y-1 font-bold text-red-700"></ul>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <h3 id="modal-title" class="text-2xl font-black mb-6 text-center text-slate-800">Initiative Settings</h3>
+            <div class="space-y-4 text-sm font-bold text-slate-700">
+                <input id="new-name" placeholder="Initiative Name" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition font-medium text-slate-900">
+                <div class="grid grid-cols-2 gap-3">
+                    <select id="new-cat" class="w-full p-3 border rounded-xl font-bold text-slate-900"><option value="Product">Product</option><option value="Engineering">Engineering</option></select>
+                    <input id="new-rank" type="number" placeholder="Rank" class="w-full p-3 border rounded-xl font-bold text-slate-900">
+                </div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div><label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">BE MW</label><input id="new-be" type="number" step="0.1" class="w-full p-2 border rounded-xl text-center font-bold text-slate-900"></div>
+                    <div><label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">FE MW</label><input id="new-fe" type="number" step="0.1" class="w-full p-2 border rounded-xl text-center font-bold text-slate-900"></div>
+                    <div><label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">QA MW</label><input id="new-qa" type="number" step="0.1" class="w-full p-2 border rounded-xl text-center font-bold text-slate-900"></div>
+                </div>
+                <div class="flex gap-3 pt-4 font-black">
+                    <button onclick="saveInitiative()" class="flex-1 bg-slate-900 text-white p-4 rounded-2xl hover:bg-slate-800 transition shadow-md">Save Changes</button>
+                    <button onclick="closeModal()" class="flex-1 bg-slate-100 text-slate-600 p-4 rounded-2xl hover:bg-slate-200 transition">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bulk-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 text-center">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-2xl shadow-2xl">
+            <h3 class="text-2xl font-black text-slate-800 mb-2 uppercase text-center font-bold">Bulk Batch Editor</h3>
+            <p class="text-xs text-slate-400 mb-4 tracking-tight text-center">Tab-separated columns: Name, Category, Rank, BE, FE, QA</p>
+            <textarea id="bulk-input" class="w-full h-64 p-4 border border-slate-200 rounded-xl outline-none font-mono text-xs focus:ring-2 focus:ring-blue-500 text-slate-800"></textarea>
+            <div class="flex gap-3 pt-4 font-black text-sm">
+                <button onclick="processBulkImport()" class="flex-1 bg-blue-600 text-white p-4 rounded-2xl transition shadow-lg hover:bg-blue-700">Sync Entire Backlog</button>
+                <button onclick="closeBulkModal()" class="flex-1 bg-slate-100 text-slate-600 p-4 rounded-2xl transition">Discard</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
