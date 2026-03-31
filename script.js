@@ -235,6 +235,24 @@ function runRawSimulation(batch, totalCap, split) {
                 let rem = i[`rem_${f.id}`];
                 if (rem > 0.001) {
                     let t = Math.min(rem, lim[f.id] - p[f.id], lLimit[f.id]);
+                    
+                    if (f.id === 'fe') {
+                        const buffer = 0.4;
+                        let feIndex = customFunctions.findIndex(x => x.id === 'fe');
+                        let depsUnfinished = false;
+                        for(let k = 0; k < feIndex; k++) {
+                            let depId = customFunctions[k].id;
+                            if (depId !== 'qa' && i[`rem_${depId}`] > 0.001) {
+                                depsUnfinished = true;
+                                break;
+                            }
+                        }
+                        
+                        if (rem - t <= buffer + 0.001 && depsUnfinished) {
+                            t = Math.max(0, rem - buffer);
+                        }
+                    }
+
                     if (t > 0.001) {
                         i[`rem_${f.id}`] -= t;
                         p[f.id] += t;
@@ -424,17 +442,19 @@ function renderFunctionsEditor() {
     const list = document.getElementById('functions-editor-list');
     list.innerHTML = customFunctions.map((f, idx) => {
         const isQA = f.id === 'qa';
+        const isFE = f.id === 'fe';
+        const isLocked = isQA || isFE;
         return `
         <div class="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100 func-row" ${!isQA ? 'draggable="true" ondragstart="dragFuncList(event, this)" ondragover="dragOverFuncList(event, this)" ondrop="dropFuncList(event, this)" ondragend="dragEndFuncList(event, this)"' : 'ondrop="dropFuncList(event, this)" ondragover="dragOverFuncList(event, this)"'} data-idx="${idx}">
             <div class="col-span-3 flex items-center gap-1">
                 ${!isQA ? `<span class="text-slate-300 text-[10px] cursor-grab -ml-1 flex-shrink-0" title="Drag to sort">⣿</span>` : `<span class="text-slate-300 text-[10px] opacity-0 -ml-1 flex-shrink-0">⣿</span>`}
-                <input type="text" class="w-full text-xs p-2 border rounded-lg font-bold func-label ${isQA ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : ''}" value="${f.label}" placeholder="e.g. BE" ${isQA ? 'disabled' : ''}>
+                <input type="text" class="w-full text-xs p-2 border rounded-lg font-bold func-label ${isLocked ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : ''}" value="${f.label}" placeholder="e.g. BE" ${isLocked ? 'disabled' : ''}>
             </div>
             <div class="col-span-2">
-                <input type="text" class="w-full text-xs p-2 border rounded-lg font-mono func-id ${isQA ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : ''}" value="${f.id}" placeholder="Id" ${isQA ? 'disabled' : ''}>
+                <input type="text" class="w-full text-xs p-2 border rounded-lg font-mono func-id ${isLocked ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : ''}" value="${f.id}" placeholder="Id" ${isLocked ? 'disabled' : ''}>
             </div>
             <div class="col-span-2">
-                <select class="w-full text-xs p-2 border rounded-lg func-color ${isQA ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : ''}" ${isQA ? 'disabled' : ''}>
+                <select class="w-full text-xs p-2 border rounded-lg func-color ${isLocked ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : ''}" ${isLocked ? 'disabled' : ''}>
                     ${availableColors.map(c => `<option value="${c}" ${c === f.color ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
             </div>
@@ -445,7 +465,7 @@ function renderFunctionsEditor() {
                 <input type="number" class="w-full text-xs p-2 border rounded-lg text-center font-bold func-lim" value="${f.limit}">
             </div>
             <div class="col-span-1 text-center">
-                ${isQA ? `<span class="text-[10px] text-slate-400 font-bold uppercase" title="Required function">Req</span>` : `<button onclick="removeFunctionRow(this)" class="text-red-500 hover:text-red-700 font-bold">✕</button>`}
+                ${isLocked ? `<span class="text-[10px] text-slate-400 font-bold uppercase" title="Required function">Req</span>` : `<button onclick="removeFunctionRow(this)" class="text-red-500 hover:text-red-700 font-bold">✕</button>`}
             </div>
         </div>
     `}).join('');
@@ -531,16 +551,20 @@ function saveFunctions() {
         let limit = parseInt(r.querySelector('.func-lim').value) || 1;
         
         if (idInput.disabled && !idInput.value) {
-            // Re-infer QA if someone hacked the DOM
-            id = 'qa'; label = 'QA'; color = 'blue';
-        } else if (idInput.disabled) {
-            id = 'qa'; label = 'QA'; color = 'blue';
+            // Re-infer if someone hacked the DOM and stripped value
+            if (r.innerHTML.toLowerCase().includes('fe')) { id = 'fe'; label = 'FE'; color = 'yellow'; }
+            else { id = 'qa'; label = 'QA'; color = 'blue'; }
         }
 
         if(label && id) {
             newFuncs.push({ id, label, color, headcount, limit });
         }
     });
+
+    let feIndex = newFuncs.findIndex(f => f.id === 'fe');
+    if (feIndex === -1) {
+        newFuncs.splice(newFuncs.length, 0, { id: 'fe', label: 'FE', color: 'yellow', limit: 2, headcount: 4 });
+    }
     
     // Ensure QA is at the end
     let qaIndex = newFuncs.findIndex(f => f.id === 'qa');
